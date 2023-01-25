@@ -1,0 +1,313 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model body_shape {
+  id           Int    @id @default(autoincrement())
+  display_name String @db.VarChar(255)
+  height       Int
+  width        Int
+
+  character_data       character_data[]
+  dynamic_part_mapping dynamic_part_mapping[]
+  outfit               outfit[]
+  pose                 pose[]
+  eyes                 eyes[]
+}
+
+model eyes {
+  id            Int           @id @default(autoincrement())
+  x             Int
+  y             Int
+  image         Bytes
+  eye_pose      eye_pose_type
+  body_shape_id Int
+  body_shape    body_shape    @relation(fields: [body_shape_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model body {
+  id        Int   @id @default(autoincrement())
+  x         Int   @db.SmallInt
+  y         Int   @db.SmallInt
+  image     Bytes
+  thumbnail Bytes
+
+  outfit outfit[]
+}
+
+model body_accessory {
+  id             Int                 @id @default(autoincrement())
+  accessory_type body_accessory_type
+  x              Int                 @db.SmallInt
+  y              Int                 @db.SmallInt
+  image          Bytes
+  thumbnail      Bytes
+
+  outfit_body_accessories outfit_body_accessories[]
+}
+
+model head {
+  id        Int   @id @default(autoincrement())
+  x         Int   @db.SmallInt
+  y         Int   @db.SmallInt
+  image     Bytes
+  thumbnail Bytes
+
+  outfit outfit[]
+}
+
+model head_accessory {
+  id             Int                 @id @default(autoincrement())
+  accessory_type head_accessory_type
+  x              Int                 @db.SmallInt
+  y              Int                 @db.SmallInt
+  image          Bytes
+  thumbnail      Bytes
+
+  outfit_head_accessories outfit_head_accessories[]
+}
+
+model prop {
+  id             Int              @id @default(autoincrement())
+  display_name   String           @db.VarChar(255)
+  prop_type      prop_type
+  x              Int              @db.SmallInt
+  y              Int              @db.SmallInt
+  character_data character_data[]
+  prop_image     Bytes
+  prop_thumbnail Bytes
+}
+
+model character_data {
+  id                        Int                         @id @default(autoincrement())
+  player_character_id       Int
+  body_shape_id             Int
+  prop_id                   Int?
+  created_at                DateTime?                   @default(now()) @db.Timestamptz(6)
+  body_shape                body_shape                  @relation(fields: [body_shape_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  player_character          player_character            @relation(fields: [player_character_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  prop                      prop?                       @relation(fields: [prop_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  character_data_outfit     character_data_outfit[]
+  character_data_pose_cache character_data_pose_cache[]
+}
+
+model character_data_outfit {
+  id                Int            @id @default(autoincrement())
+  character_data_id Int
+  outfit_id         Int
+  character_data    character_data @relation(fields: [character_data_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  outfit            outfit         @relation(fields: [outfit_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model character_data_pose_cache {
+  character_data_id Int
+  pose_id           Int
+  image             Bytes
+  character_data    character_data @relation(fields: [character_data_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  pose              pose           @relation(fields: [pose_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([character_data_id, pose_id])
+}
+
+model color_string {
+  id                         Int                          @id @default(autoincrement())
+  hexstring                  String                       @unique @db.VarChar(9)
+  color                      color_type
+  dynamic_part_mapping_pixel dynamic_part_mapping_pixel[]
+  dynamic_part_pixel         dynamic_part_pixel[]
+  pose_pixel                 pose_pixel[]
+}
+
+model dynamic_layer {
+  id           Int            @id @default(autoincrement())
+  dynamic_part dynamic_part[]
+  outfit       outfit[]
+}
+
+model dynamic_part {
+  id                      Int                  @id @default(autoincrement())
+  dynamic_layer_id        Int
+  dynamic_part_mapping_id Int
+  dynamic_layer           dynamic_layer        @relation(fields: [dynamic_layer_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  dynamic_part_mapping    dynamic_part_mapping @relation(fields: [dynamic_part_mapping_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  dynamic_part_pixel      dynamic_part_pixel[]
+
+  @@unique([dynamic_layer_id, dynamic_part_mapping_id])
+}
+
+model dynamic_part_pixel {
+  id              Int          @id @default(autoincrement())
+  color_string_id Int
+  dynamic_part_id Int
+  x               Int          @db.SmallInt
+  y               Int          @db.SmallInt
+  color_string    color_string @relation(fields: [color_string_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  dynamic_part    dynamic_part @relation(fields: [dynamic_part_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([dynamic_part_id, x, y])
+}
+
+model dynamic_part_mapping {
+  id                         Int                          @id @default(autoincrement())
+  body_shape_id              Int
+  dynamic_part               dynamic_part_type
+  dynamic_parts              dynamic_part[]
+  body_shape                 body_shape                   @relation(fields: [body_shape_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  dynamic_part_mapping_pixel dynamic_part_mapping_pixel[]
+
+  @@unique([body_shape_id, dynamic_part])
+}
+
+model dynamic_part_mapping_pixel {
+  color_string_id         Int
+  dynamic_part_mapping_id Int
+  x                       Int                  @db.SmallInt
+  y                       Int                  @db.SmallInt
+  color_string            color_string         @relation(fields: [color_string_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  dynamic_part_mapping    dynamic_part_mapping @relation(fields: [dynamic_part_mapping_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([color_string_id, dynamic_part_mapping_id])
+  @@unique([color_string_id, dynamic_part_mapping_id, x, y])
+}
+
+model outfit {
+  id                      Int                       @id @default(autoincrement())
+  display_name            String                    @db.VarChar(255)
+  body_shape_id           Int
+  dynamic_layer_id        Int?
+  body_id                 Int?
+  head_id                 Int?
+  outfit_layer_type       outfit_layer_type
+  isdefault               Boolean                   @default(false)
+  character_data_outfit   character_data_outfit[]
+  thumbnail               Bytes
+  body                    body?                     @relation(fields: [body_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  body_shape              body_shape                @relation(fields: [body_shape_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  dynamic_layer           dynamic_layer?            @relation(fields: [dynamic_layer_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  head                    head?                     @relation(fields: [head_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  outfit_body_accessories outfit_body_accessories[]
+  outfit_head_accessories outfit_head_accessories[]
+}
+
+model outfit_body_accessories {
+  outfit_id         Int
+  body_accessory_id Int
+  body_accessory    body_accessory @relation(fields: [body_accessory_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  outfit            outfit         @relation(fields: [outfit_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([outfit_id, body_accessory_id])
+}
+
+model outfit_head_accessories {
+  outfit_id         Int
+  head_accessory_id Int
+  head_accessory    head_accessory @relation(fields: [head_accessory_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  outfit            outfit         @relation(fields: [outfit_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([outfit_id, head_accessory_id])
+}
+
+model player_character {
+  id             Int              @id @default(autoincrement())
+  character_data character_data[]
+}
+
+model pose {
+  id                        Int                         @id @default(autoincrement())
+  body_shape_id             Int
+  display_name              String                      @db.VarChar(255)
+  head_x                    Int                         @db.SmallInt
+  head_y                    Int                         @db.SmallInt
+  head_rot                  Int                         @db.SmallInt
+  body_x                    Int                         @db.SmallInt
+  body_y                    Int                         @db.SmallInt
+  body_rot                  Int                         @db.SmallInt
+  prop_x                    Int                         @db.SmallInt
+  prop_y                    Int                         @db.SmallInt
+  prop_rot                  Int                         @db.SmallInt
+  eye_pose                  eye_pose_type
+  mirrored                  Boolean
+  isdefault                 Boolean                     @default(false)
+  character_data_pose_cache character_data_pose_cache[]
+  body_shape                body_shape                  @relation(fields: [body_shape_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  pose_pixel                pose_pixel[]
+  thumbnail                 Bytes
+}
+
+model pose_pixel {
+  pose_id         Int
+  color_string_id Int
+  x               Int          @db.SmallInt
+  y               Int          @db.SmallInt
+  color_string    color_string @relation(fields: [color_string_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  pose            pose         @relation(fields: [pose_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([pose_id, color_string_id])
+  @@unique([pose_id, x, y])
+}
+
+enum body_accessory_type {
+  CLOAK
+  BACK_GEAR
+  BELT
+  SHOULDERS
+}
+
+enum color_type {
+  GRAY
+  RED
+  ORANGE_RED
+  ORANGE_BROWN
+  ORANGE_YELLOW
+  YELLOW
+  YELLOW_GREEN
+  GREEN
+  GREEN_CYAN
+  CYAN
+  CYAN_BLUE
+  BLUE
+  BLUE_MAGENTA
+  MAGENTA
+  MAGENTA_PINK
+  PINK
+  PINK_RED
+}
+
+enum dynamic_part_type {
+  LEFT_LEG
+  RIGHT_LEG
+  LEFT_ARM
+  RIGHT_ARM
+}
+
+enum head_accessory_type {
+  EYES
+  HAIR
+  FACIAL_HAIR
+  HEADGEAR
+}
+
+enum eye_pose_type {
+  SIDE
+  DOWN
+  EYES_CLOSED
+}
+
+enum outfit_layer_type {
+  SKIN
+  CLOTHES
+  ARMOR
+}
+
+enum prop_type {
+  MELEE_1H
+  MELEE_2H
+  POLEARM
+  BOW
+  CROSSBOW
+}

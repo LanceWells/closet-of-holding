@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+      - name: frontend
+        image: ghcr.io/lancewells/loot-loadout/frontend:latest-dev
+        resources:
+          limits:
+            memory: "6144Mi"
+            cpu: "2000m"
+        ports:
+        - containerPort: 3000
+        env:
+          - name: AUTH_DISCORD_CLIENTID
+            valueFrom:
+              secretKeyRef:
+                name: discord-auth
+                key: AUTH_DISCORD_CLIENTID
+          - name: AUTH_DISCORD_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: discord-auth
+                key: AUTH_DISCORD_SECRET
+          - name: NEXTAUTH_URL
+            value: http://localhost:3001/api/auth
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+spec:
+  type: ClusterIP
+  selector:
+    app: frontend
+  ports:
+  - protocol: TCP
+    port: 3001
+    targetPort: 3000

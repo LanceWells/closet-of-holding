@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: closet-of-holding-db
+spec:
+  selector:
+    matchLabels:
+      app: closet-of-holding-db
+  template:
+    metadata:
+      labels:
+        app: closet-of-holding-db
+    spec:
+      containers:
+      - name: closet-of-holding-db
+        image: postgres:14.4
+        env:
+          - name: POSTGRES_DB
+            valueFrom:
+              secretKeyRef:
+                name: character-image-db
+                key: dbname
+          - name: POSTGRES_USER
+            valueFrom:
+              secretKeyRef:
+                name: character-image-db
+                key: username
+          - name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: character-image-db
+                key: password
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+        ports:
+          - containerPort: 5432
+            name: psql-port
+        volumeMounts:
+          - mountPath: /var/lib/postgresql/data
+            name: closet-of-holding-db
+      volumes:
+      - name: closet-of-holding-db
+        persistentVolumeClaim:
+          claimName: closet-of-holding-db
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: closet-of-holding-db
+spec:
+  type: ClusterIP
+  ports:
+    - protocol: TCP
+      port: 5432
+      name: psql-port
+  selector:
+    app: closet-of-holding-db
+
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: closet-of-holding-db
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: /run/desktop/mnt/host/c/lootLoadout
+    type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: closet-of-holding-db
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
